@@ -158,18 +158,16 @@ void loop() {
   // Update previousAccel for the next loop.
   previousAccel = currentAccel;
 
+  // brightness based on acceleration, faster = brighter
+  int y = map(accelDifference, 1, 3000, 1, 100);
+  strip.setBrightness(y);
 
-  // Check if the Bean has been moved beyond our threshold.
-  if (accelDifference > THRESHOLD) {
+  // cycle wait time, slow when slow fast when fast.
+  int z = map(accelDifference, 1, 1600, 10, 1);
+  rainbowCycle(1); // zx8x256 = 2048ms?
 
-    // triggered by movement, should last 20ms.
-    brutal();
-    Serial.println( String("< ") + accelDifference + " >" );
+  Serial.println( String("< ") + accelDifference +  " y " + y + " z " + z + " >" );
 
-    Bean.sleep(20);
-  } else {
-    Bean.sleep(20);
-  }
 }// end of main loop.
 
 // Fill the dots one after the other with a color
@@ -223,14 +221,25 @@ void rainbow(uint8_t wait) {
 void rainbowCycle(uint8_t wait) {
   uint16_t i, j;
 
-  for (j = 0; j < 256 * 5; j++) { // 5 cycles of all colors on wheel
     for (i = 0; i < strip.numPixels(); i++) {
-      strip.setPixelColor(i, Wheel(((i * 256 / strip.numPixels()) + j) & 255));
+      strip.setPixelColor(i, Wheel(((i * 256 / strip.numPixels())) & 255));
     }
     strip.show();
     delay(wait);
-  }
 }
+
+//// Slightly different, this makes the rainbow equally distributed throughout
+//void rainbowCycle(uint8_t wait) {
+//  uint16_t i, j;
+//
+//  for (j = 0; j < 256; j++) {
+//    for (i = 0; i < strip.numPixels(); i++) {
+//      strip.setPixelColor(i, Wheel(((i * 256 / strip.numPixels()) + j) & 255));
+//    }
+//    strip.show();
+//    delay(wait);
+//  }
+//}
 
 //Theatre-style crawling lights.
 void theaterChase(uint32_t c, uint8_t wait) {
