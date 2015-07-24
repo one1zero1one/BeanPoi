@@ -13,25 +13,23 @@
 
 // where is the neopixel stick connected  (mirrored)
 #define PIN 1
+#include <Adafruit_GFX.h>
+#include <Adafruit_NeoMatrix.h>
 #include <Adafruit_NeoPixel.h>
 Adafruit_NeoPixel strip = Adafruit_NeoPixel(8, PIN, NEO_GRB + NEO_KHZ800);
+Adafruit_NeoMatrix matrix = Adafruit_NeoMatrix(1, 8, PIN,  NEO_MATRIX_BOTTOM, NEO_GRB + NEO_KHZ400);
 
 // When acceleration is below this threshold, we consider it moving
 #define THRESHOLD 100
 AccelerationReading previousAccel;
-int fallDuration = 0;
-int fallCount = 0;
 
 #define MAX_STRING_LEN 27
 
 // this holds all serial input until a full command is in it
 String cmdBuffer;
 
-// for the blink command
-bool doBlink = false;
-bool blinkState = true;
-int blinkCnt = 0;
-LedReading oldLed;
+// integer used to count sequence in loop
+int j;
 
 void setup() {
 
@@ -42,7 +40,7 @@ void setup() {
   Serial.setTimeout(25);
 
   strip.begin();
-  strip.setBrightness(10);
+  strip.setBrightness(100);
 
   brutal();
 
@@ -83,43 +81,8 @@ void loop() {
       // -------------------------------------------
       // now we can do something with the command...
 
-
-      // hello ... world
-      if ( !strncmp( buffer, "hello", 5 ) )
-      {
-        Serial.println( "< world >" );
-      }
-
-      // request temperature data
-      else if ( !strncmp( buffer, "temp", 4 ) )
-      {
-        int8_t newTemp = Bean.getTemperature();
-        Serial.println( String("< Temperature: ") + String(newTemp) + "c >" );
-      }
-
-      // request accelerometer data
-      else if ( !strncmp( buffer, "acc", 3 ) )
-      {
-        int8_t x = Bean.getAccelerationX();
-        int8_t y = Bean.getAccelerationY();
-        int8_t z = Bean.getAccelerationZ();
-        Serial.println( String("< Accelerometer: ") + String(x) + "," + String(y) + "," + String(z) + " >" );
-      }
-
-      // blink
-      else if ( !strncmp( buffer, "blink", 5 ) )
-      {
-        doBlink = !doBlink;
-        if ( doBlink && ( Bean.getLedRed() + Bean.getLedGreen() + Bean.getLedBlue() == 0 ) )
-          Bean.setLed( 255, 255, 255 );
-        else if ( !doBlink )
-          Bean.setLed( 0, 0, 0 );
-        oldLed = Bean.getLed();
-        Serial.println( String("< Blink ") + (doBlink ? "ON" : "OFF") + " >" );
-      }
-
-      // everything else, just echo it
-      else if ( !strncmp( buffer, "1" , 1) )
+      strip.setBrightness(100);
+      if ( !strncmp( buffer, "1" , 1) )
       {
         Serial.println ( String("< rainbow >") );
         rainbow(20);
@@ -132,17 +95,17 @@ void loop() {
       else if ( !strncmp( buffer, "3" , 1) )
       {
         Serial.println ( String("< theaterChaseRainbow >") );
-        theaterChaseRainbow(50);
+        theaterChaseRainbow(20);
       }
       else if ( !strncmp( buffer, "4" , 1) )
       {
         Serial.println ( String("< theaterChase >") );
-        theaterChase(strip.Color(127, 127, 127), 50); // White
-        theaterChase(strip.Color(127, 0, 0), 50); // Red
-        theaterChase(strip.Color(0, 0, 127), 50); // Blue
+        theaterChase(strip.Color(127, 127, 127), 20); // White
+        theaterChase(strip.Color(127, 0, 0), 20); // Red
+        theaterChase(strip.Color(0, 0, 127), 20); // Blue
 
       }
-      else
+      else // everything else, just echo it
       {
         Serial.println( String("< ") + buffer + " >" );
       }
@@ -159,14 +122,28 @@ void loop() {
   previousAccel = currentAccel;
 
   // brightness based on acceleration, faster = brighter
-  int y = map(accelDifference, 1, 3000, 1, 100);
-  strip.setBrightness(y);
+  int y = map(accelDifference, 1, 500, 10, 100);
+  strip.setBrightness(100);
 
   // cycle wait time, slow when slow fast when fast.
-  int z = map(accelDifference, 1, 1600, 10, 1);
-  rainbowCycle(1); // zx8x256 = 2048ms?
+  //int z = map(accelDifference, 1, 3000, 10, 1);
+  //rainbowCycle(1); // zx8x256 = 2048ms?
+  //need to color all leds based on R G B
+ 
+  if (j < 256) {
+    for (int i = 0; i < strip.numPixels(); i++) {
+      strip.setPixelColor(i, Wheel(((i * 256 / strip.numPixels()) + j) & 255));
+    }
+    j++;
+    strip.show();
+  }
+  else {
+    j = 0;
+    strip.show();
+  }
 
-  Serial.println( String("< ") + accelDifference +  " y " + y + " z " + z + " >" );
+ 
+//  Serial.println( String("< (1-3000) ") + accelDifference +  " (1-100) " + y   + " >" );
 
 }// end of main loop.
 
@@ -215,17 +192,18 @@ void rainbow(uint8_t wait) {
     strip.show();
     delay(wait);
   }
+  strip.setBrightness(10);
 }
 
 // Slightly different, this makes the rainbow equally distributed throughout
 void rainbowCycle(uint8_t wait) {
   uint16_t i, j;
 
-    for (i = 0; i < strip.numPixels(); i++) {
-      strip.setPixelColor(i, Wheel(((i * 256 / strip.numPixels())) & 255));
-    }
-    strip.show();
-    delay(wait);
+  for (i = 0; i < strip.numPixels(); i++) {
+    strip.setPixelColor(i, Wheel(((i * 256 / strip.numPixels())) & 255));
+  }
+  strip.show();
+  delay(wait);
 }
 
 //// Slightly different, this makes the rainbow equally distributed throughout

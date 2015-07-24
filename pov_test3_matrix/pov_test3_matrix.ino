@@ -5,7 +5,7 @@
 #include <Adafruit_NeoMatrix.h>
 #include <Adafruit_NeoPixel.h>
 #ifndef PSTR
- #define PSTR // Make Arduino Due happy  replace,
+#define PSTR // Make Arduino Due happy  replace,
 #endif
 
 #define PIN 1
@@ -40,19 +40,21 @@ Adafruit_NeoMatrix matrix = Adafruit_NeoMatrix(1, 8, PIN,  NEO_MATRIX_BOTTOM, NE
 
 //Color definitions
 const uint32_t colors[] = {
-  matrix.Color(252, 0, 0), matrix.Color(0, 252, 0), matrix.Color(0, 0, 252) };//Starting color
-  
+  matrix.Color(252, 0, 0), matrix.Color(0, 252, 0), matrix.Color(0, 0, 252)
+};//Starting color
+
 const uint32_t colorfade[] = {
-  matrix.Color(36, 0, 0), matrix.Color(0, 36,0), matrix.Color(0, 0, 36) };//fade color
-  
+  matrix.Color(36, 0, 0), matrix.Color(0, 36, 0), matrix.Color(0, 0, 36)
+};//fade color
+
 
 void setup() {
   matrix.begin();
   matrix.setTextWrap(false);
-  matrix.setBrightness(10);
+  matrix.setBrightness(100);
   matrix.setTextColor(colors[0]);
   matrix.setTextSize(1);
-  
+
 }
 int fade;
 int randomNumber1; //rain graphic random numbers
@@ -62,100 +64,100 @@ int randomDelay; //rain graphic random numbers
 int x   = matrix.width(); //matrix dimensions
 int y = matrix.height();//matrix dimensions
 int pass = 0;
-int i =0;   // counter for graphics
+int i = 0;  // counter for graphics
 int j = 0 ; //internal graphics counter
 
 void loop() { // call graphic functions
-				
+
   Serial.begin(9600);
 
-	/*for (i = 0 ; i<2; i++){
-		rainDrop();
-	}
-	*/
-	
-	textGraphic();
-	
+  /*for (i = 0 ; i<2; i++){
+  	rainDrop();
+  }
+  */
+
+  textGraphic();
+
 
 }
 
 
-		void rainDrop (){ //rain graphic function
-	
-  					
-				  	Serial.begin(9600);
-				  	
-				  	int randomColor;
-				
-					j=0;
-					matrix.fillScreen(0); 
-					randomSeed(i);
-					randomNumber1 = random(10);
-					int randomNumber2 = random(10);
-					randomColor1 = random(0,2);
-					randomColor2 = random(0,2);
-					randomDelay = random(30,70);
-				  	
-				  
-				  	for (int j = 0;j<=17;j++){
-				  		
-				  		delay (randomDelay);
-				  		matrix.drawPixel(randomNumber1,j,colors[randomColor1]);
-				  		fade = colors[randomColor]-colorfade[randomColor1];
-						delay (randomDelay);
-						
-				  		matrix.drawPixel(randomNumber1,j-1,fade); 
-				  		fade = fade-colorfade[randomColor1];
-				  		delay (randomDelay);
-				  	
-				  		matrix.drawPixel(randomNumber1,j-2,fade); 
-				  		fade = fade-colorfade[randomColor1];
-				  		delay (randomDelay);
-				  		
-				  		matrix.drawPixel(randomNumber1,j-3,fade); 
-				  		fade = fade-colorfade[randomColor1];
-				  		delay (randomDelay);
-				  	
-				  		matrix.drawPixel(randomNumber1,j-4,fade); 
-						fade = fade-colorfade[randomColor1];
-						delay (randomDelay);
-						
-				  		matrix.drawPixel(randomNumber1,j-5,fade); 
-				  		fade = fade-colorfade[randomColor1];
-				  		delay (randomDelay);
-				  		
-				  		matrix.drawPixel(randomNumber1,j-6,fade);
-				  		delay (randomDelay);
-				  			
-				  		matrix.drawPixel(randomNumber1,j-7,0);
-				  		delay (randomDelay);
-				  		matrix.show();
-   						
-  					}
-  					i++;
-
-			}
+void rainDrop () { //rain graphic function
 
 
-		void textGraphic (){ //Text graphic function
-			
-			for (i = 0 ; i<150; i++){
-				matrix.fillScreen(0);  // scroll text 
-  				matrix.setCursor(x, 0);
-  				matrix.print(F(" Hello!"));
-					 if(--x < -204) {
-				    	x = matrix.width();
-				    	if(++pass >= 3) pass = 0;
-				    	
-				    	
-    			matrix.setTextColor(colors[pass]);
-   				 }
-				matrix.show();
-  				//delay(1);
-  				i++;
-				}
-			}	
+  Serial.begin(9600);
 
-  
+  int randomColor;
+
+  j = 0;
+  matrix.fillScreen(0);
+  randomSeed(i);
+  randomNumber1 = random(10);
+  int randomNumber2 = random(10);
+  randomColor1 = random(0, 2);
+  randomColor2 = random(0, 2);
+  randomDelay = random(30, 70);
+
+
+  for (int j = 0; j <= 17; j++) {
+
+    delay (randomDelay);
+    matrix.drawPixel(randomNumber1, j, colors[randomColor1]);
+    fade = colors[randomColor] - colorfade[randomColor1];
+    delay (randomDelay);
+
+    matrix.drawPixel(randomNumber1, j - 1, fade);
+    fade = fade - colorfade[randomColor1];
+    delay (randomDelay);
+
+    matrix.drawPixel(randomNumber1, j - 2, fade);
+    fade = fade - colorfade[randomColor1];
+    delay (randomDelay);
+
+    matrix.drawPixel(randomNumber1, j - 3, fade);
+    fade = fade - colorfade[randomColor1];
+    delay (randomDelay);
+
+    matrix.drawPixel(randomNumber1, j - 4, fade);
+    fade = fade - colorfade[randomColor1];
+    delay (randomDelay);
+
+    matrix.drawPixel(randomNumber1, j - 5, fade);
+    fade = fade - colorfade[randomColor1];
+    delay (randomDelay);
+
+    matrix.drawPixel(randomNumber1, j - 6, fade);
+    delay (randomDelay);
+
+    matrix.drawPixel(randomNumber1, j - 7, 0);
+    delay (randomDelay);
+    matrix.show();
+
+  }
+  i++;
+
+}
+
+
+void textGraphic () { //Text graphic function
+
+  for (i = 0 ; i < 150; i++) {
+    matrix.fillScreen(0);  // scroll text
+    matrix.setCursor(x, 0);
+    matrix.print(F(" Hello!"));
+    if (--x < -204) {
+      x = matrix.width();
+      if (++pass >= 3) pass = 0;
+
+
+      matrix.setTextColor(colors[pass]);
+    }
+    matrix.show();
+    //delay(1);
+    i++;
+  }
+}
+
+
 
 
