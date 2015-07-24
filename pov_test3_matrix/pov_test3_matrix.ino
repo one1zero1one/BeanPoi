@@ -144,7 +144,7 @@ void textGraphic () { //Text graphic function
   for (i = 0 ; i < 150; i++) {
     matrix.fillScreen(0);  // scroll text
     matrix.setCursor(x, 0);
-    matrix.print(F(" Hello!"));
+    matrix.print(F(" hello there"));
     if (--x < -204) {
       x = matrix.width();
       if (++pass >= 3) pass = 0;

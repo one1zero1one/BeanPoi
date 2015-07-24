@@ -31,6 +31,22 @@ String cmdBuffer;
 // integer used to count sequence in loop
 int j;
 
+// integer used to keep brightness
+int keepBrightness = 10;
+
+// Define the number of samples to keep track of.  The higher the number,
+// the more the readings will be smoothed, but the slower the output will
+// respond to the input.  Using a constant rather than a normal variable lets
+// use this value to determine the size of the readings array.
+const int numReadings = 10;
+
+int readings[numReadings];      // the readings from the analog input
+int index = 0;                  // the index of the current reading
+int total = 0;                  // the running total
+int average = 0;                // the average
+
+
+
 void setup() {
 
   // initialize serial communication at 57600 bits per second:
@@ -40,12 +56,16 @@ void setup() {
   Serial.setTimeout(25);
 
   strip.begin();
-  strip.setBrightness(100);
+  strip.setBrightness(keepBrightness);
 
   brutal();
 
   // Initial reading
   previousAccel = Bean.getAcceleration();
+
+  // initialize all the readings to 0:
+  for (int thisReading = 0; thisReading < numReadings; thisReading++)
+    readings[thisReading] = 0;
 }
 
 void loop() {
@@ -81,28 +101,29 @@ void loop() {
       // -------------------------------------------
       // now we can do something with the command...
 
-      strip.setBrightness(100);
+      if ( !strncmp( buffer, "0" , 1) )
+      {
+        Serial.println ( String("< Brightness 0 >") );
+        keepBrightness = 0;
+      }
       if ( !strncmp( buffer, "1" , 1) )
       {
-        Serial.println ( String("< rainbow >") );
-        rainbow(20);
+        Serial.println ( String("< Brightness 5 >") );
+        keepBrightness = 5;
       }
       else if ( !strncmp( buffer, "2" , 1) )
       {
-        Serial.println ( String("< rainbowCycle >") );
-        rainbowCycle(20);
+        Serial.println ( String("< Brightness 50 >") );
+        keepBrightness = 50;
       }
       else if ( !strncmp( buffer, "3" , 1) )
       {
-        Serial.println ( String("< theaterChaseRainbow >") );
-        theaterChaseRainbow(20);
+        Serial.println ( String("< Brightness 100 >") );
+        keepBrightness = 100;
       }
       else if ( !strncmp( buffer, "4" , 1) )
       {
-        Serial.println ( String("< theaterChase >") );
-        theaterChase(strip.Color(127, 127, 127), 20); // White
-        theaterChase(strip.Color(127, 0, 0), 20); // Red
-        theaterChase(strip.Color(0, 0, 127), 20); // Blue
+        Serial.println ( String("< not implemented >") );
 
       }
       else // everything else, just echo it
@@ -113,6 +134,9 @@ void loop() {
   }
   // buffer work done
 
+  // brigthness set to the value
+  strip.setBrightness(keepBrightness);
+
   // Get the current acceleration with a conversion of 3.91×10-3 g/unit.
   AccelerationReading currentAccel = Bean.getAcceleration();
 
@@ -121,18 +145,41 @@ void loop() {
   // Update previousAccel for the next loop.
   previousAccel = currentAccel;
 
+  // subtract the last reading:
+  total = total - readings[index];
+  // read from the sensor:
+  readings[index] = accelDifference;
+  // add the reading to the total:
+  total = total + readings[index];
+  // advance to the next position in the array:
+  index = index + 1;
+  // if we're at the end of the array...
+  if (index >= numReadings)   {
+    // ...wrap around to the beginning:
+    index = 0;
+    // calculate the average:
+    average = total / numReadings;
+    // send it to the computer as ASCII digits
+    Serial.println( String("< (1-3000) ") + average);
+  }
+
   // brightness based on acceleration, faster = brighter
-  int y = map(accelDifference, 1, 500, 10, 100);
-  strip.setBrightness(100);
+  int color = map(accelDifference, 1, 500, 1, 256);
+  int brightness = map(accelDifference, 1, 500, 1, 10);
+
+  strip.setBrightness(keepBrightness + brightness);
 
   // cycle wait time, slow when slow fast when fast.
   //int z = map(accelDifference, 1, 3000, 10, 1);
   //rainbowCycle(1); // zx8x256 = 2048ms?
   //need to color all leds based on R G B
- 
+
   if (j < 256) {
     for (int i = 0; i < strip.numPixels(); i++) {
-      strip.setPixelColor(i, Wheel(((i * 256 / strip.numPixels()) + j) & 255));
+      int pixel = map(j, 1 , 256, 1, 8);
+      //   strip.setPixelColor(i, Wheel(((i * 256 / strip.numPixels()) + j) & 255));
+      strip.setPixelColor(i, Wheel(j));
+      strip.setPixelColor(pixel, Wheel(256-j) );
     }
     j++;
     strip.show();
@@ -142,8 +189,8 @@ void loop() {
     strip.show();
   }
 
- 
-//  Serial.println( String("< (1-3000) ") + accelDifference +  " (1-100) " + y   + " >" );
+
+
 
 }// end of main loop.
 

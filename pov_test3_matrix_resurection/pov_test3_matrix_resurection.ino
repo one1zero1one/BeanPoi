@@ -43,7 +43,7 @@ const uint16_t colors[] = {
 void setup() {
   matrix.begin();
   matrix.setTextWrap(false);
-  matrix.setBrightness(10);
+  matrix.setBrightness(100);
   matrix.setTextColor(colors[0]);
   matrix.setTextSize(1);
 }
@@ -54,7 +54,7 @@ int pass = 0;
 void loop() {
   matrix.fillScreen(0);
   matrix.setCursor(x, 0);
-  matrix.print(F(" | "));
+  matrix.print(F(" love "));
   if(--x < -128) {
     x = matrix.width();
     if(++pass >= 3) pass = 0;
