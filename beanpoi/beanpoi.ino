@@ -16,6 +16,8 @@ todo
 #include <Adafruit_GFX.h>
 #include <Adafruit_NeoMatrix.h>
 #include <Adafruit_NeoPixel.h>
+#include <elapsedMillis.h>
+
 Adafruit_NeoPixel strip = Adafruit_NeoPixel(8, PIN, NEO_GRB + NEO_KHZ800);
 Adafruit_NeoMatrix matrix = Adafruit_NeoMatrix(1, 8, PIN,  NEO_MATRIX_BOTTOM, NEO_GRB + NEO_KHZ400);
 
@@ -36,16 +38,27 @@ int keepBrightness = 0;
 
 // Define the number of samples to keep track of.  The higher the number,
 // the more the readings will be smoothed, but the slower the output will
-// respond to the input.  
-const int numReadings = 20;
+// respond to the input.
+const int numReadings = 10;
 
 int readings[numReadings];      // the readings from the analog input
 int index = 0;                  // the index of the current reading
 int total = 0;                  // the running total
 int average = 0;                // the average
 
-int type = 0;                   // menu state
+int type = 1;                   // menu state
 
+//timer0
+elapsedMillis timer0;
+#define interval 1000
+// the interval in mS
+
+int dynInterval = 1000;
+
+long randNumber;
+long time = 0;
+
+int periode = 5000;
 
 void setup() {
 
@@ -60,7 +73,7 @@ void setup() {
   strip.setBrightness(keepBrightness);
 
   //do startup check instead of brutal
-  brutal(); 
+  brutal();
 
   // Initial reading
   previousAccel = Bean.getAcceleration();
@@ -68,6 +81,11 @@ void setup() {
   // initialize all the readings to 0:
   for (int thisReading = 0; thisReading < numReadings; thisReading++)
     readings[thisReading] = 0;
+
+  timer0 = 0; // clear the timer at the end of startup
+
+  randomSeed(analogRead(0));
+
 }
 
 void loop() {
@@ -106,36 +124,28 @@ void loop() {
       if ( !strncmp( buffer, "0" , 1) )
       {
         Serial.println ( String("< Brightness 0 >") );
-        
+
         keepBrightness = 0;
       }
       if ( !strncmp( buffer, "1" , 1) )
       {
         Serial.println ( String("< Brightness 5 >") );
-        keepBrightness = 5;
-      }
-      else if ( !strncmp( buffer, "2" , 1) )
-      {
-        Serial.println ( String("< Brightness 50 >") );
-        keepBrightness = 50;
-      }
-      else if ( !strncmp( buffer, "3" , 1) )
-      {
-        Serial.println ( String("< Brightness 100 >") );
         keepBrightness = 100;
       }
       else if ( !strncmp( buffer, "debug" , 1) )
       {
-      Serial.println( String(" type ") + type);
-      Serial.println( String(" average ") + average);
-
+        Serial.println( String(" type ") + type);
+        Serial.println( String(" average ") + average);
+        Serial.println( String(" keepBrightness ") + keepBrightness);
+        Serial.println( String(" dynInterval ") + dynInterval);
       }
       else // everything else, just echo it
       {
         Serial.println( String("< ") + buffer + " >" );
-        
+
       }
     }
+    dynInterval = 1000; //give it a second until type detection in the attempt to avoid type change on serial comm
   }
   // buffer work done
 
@@ -144,7 +154,7 @@ void loop() {
 
   // Find the difference between the current acceleration and that of 20ms ago. ????????
   int accelDifference = getAccelDifference(previousAccel, currentAccel);
-  
+
   // Update previousAccel for the next loop.
   previousAccel = currentAccel;
 
@@ -163,59 +173,86 @@ void loop() {
     // calculate the average:
     average = total / numReadings;
     //every send it to the computer as ASCII digits
-   //Serial.println( String("< (1-3000) ") + average); after a while, it crashes the device. Maybe display some status once a minute?
+    //Serial.println( String("< (1-3000) ") + average); after a while, it crashes the device. Maybe display some status once a minute?
   }
-  
- // if still reset.
- // if shaken moving through the menus else stop reset
- if (average < 20) {
-   keepBrightness = 0;
-   type = 0;
- } else if (average > THRESHOLD) {
-   type++;
-   if (type == 5) { type = 1; }
-   Serial.println( String(" type ") + type);
- }
- 
- if (type == 1) { keepBrightness = 10; }
- if (type == 2) { keepBrightness = 50; }
- if (type == 3) { keepBrightness = 100; }
- 
-// brigthness set to the value
-strip.setBrightness(keepBrightness);
 
- strip.show();
- 
- if (type == 4)  {
-  // brightness based on acceleration, faster = brighter ?? this just makes it slightly brighter when in used, the intended purpose was to detect loops, not possible without gyroscope
-  // int color = map(accelDifference, 1, 500, 1, 256);
-  // int brightness = map(accelDifference, 1, 500, 1, 10);
- // strip.setBrightness(keepBrightness + brightness);
-
-  // cycle wait time, slow when slow fast when fast. ?? no same as before
-  //int z = map(accelDifference, 1, 3000, 10, 1);
-  //rainbowCycle(1); // zx8x256 = 2048ms?
-  //need to color all leds based on R G B
-
-
-  // the lousy one pixel moves every 2 seconds while the rest loop rgb.
-  if (j < 256) {
-    for (int i = 0; i < strip.numPixels(); i++) {
-      int pixel = map(j, 1 , 256, 1, 8);
-      //   strip.setPixelColor(i, Wheel(((i * 256 / strip.numPixels()) + j) & 255));
-      strip.setPixelColor(i, Wheel(j));
-      strip.setPixelColor(pixel, Wheel(256-j) );
+  // once a second logic to change the type
+  if (timer0 > dynInterval) {
+    timer0 -= dynInterval;
+    dynInterval = 100;
+    // if shaken moving through the menus else stop reset
+    if (average > THRESHOLD) {
+      type++;
+      dynInterval = 2000;
+      if (type == 6) {
+        type = 1;
+      }
+      Serial.println( String(" type changed to ") + type);
     }
-    j++;
+  }
+
+  if (type == 1) { // blank
+    keepBrightness = 0; // shutup.
+    strip.setBrightness(keepBrightness);
     strip.show();
   }
-  else {
-    j = 0;
-    strip.show();
+  if (type == 2) { // all pixels are random
+    keepBrightness = 5;
+    strip.setBrightness(keepBrightness);
+    for (int i = 0; i < strip.numPixels(); i++) {
+      randNumber = random(0, 255);
+      strip.setPixelColor(i, Wheel(randNumber));
+      strip.show();
+    }
   }
- }
+  if (type == 3) { // all pixels are cosine with time displacement
+    strip.setBrightness(keepBrightness);
+    for (int i = 0; i < strip.numPixels(); i++) { // each pixel
+      int time = millis();
+      int value = 128 + 127 * cos(2 * PI / 5000 * (255 * i - time)); // get a value between 0 to 255 according to cosinus, with a time displacement
+      strip.setPixelColor(i, Wheel(value));
+      strip.show();
+    }
+  }
+
+  if (type == 4) { // cosine with larger timespan and first killing lights on a sin
+
+    strip.setBrightness(keepBrightness);
+
+    int value = 4 + 4 * cos(2 * PI / 10000 * time);
+    strip.setPixelColor(value, 0);
+    strip.show();
+
+    for (int i = 0; i < strip.numPixels(); i++) { // each pixel
+      if (i != value) {
+        int time = millis();
+        int value = 128 + 127 * cos(2 * PI / 10000 * (255 * i - time)); // get a value between 0 to 255 according to cosinus, with a time displacement
+        strip.setPixelColor(i, Wheel(value));
+        strip.show();
+      }
+    }
 
 
+  }
+
+
+  if (type == 5)  {
+    // the lousy one pixel moves every 2 seconds while the rest loop rgb.
+    if (j < 256) {
+      for (int i = 0; i < strip.numPixels(); i++) {
+        int pixel = map(j, 1 , 256, 1, 8);
+        //   strip.setPixelColor(i, Wheel(((i * 256 / strip.numPixels()) + j) & 255));
+        strip.setPixelColor(i, Wheel(j));
+        strip.setPixelColor(pixel, Wheel(256 - j) );
+      }
+      j++;
+      strip.show();
+    }
+    else {
+      j = 0;
+      strip.show();
+    }
+  }
 
 }// end of main loop.
 
@@ -247,13 +284,17 @@ int getAccelDifference(AccelerationReading readingOne, AccelerationReading readi
 void brutal() {
   colorWipe(strip.Color(255, 0, 0), 5); // Red
   strip.show();
+  delay(200);
   colorWipe(strip.Color(0, 255, 0), 5); // Green
   strip.show();
+  delay(200);
   colorWipe(strip.Color(0, 0, 255), 5); // Blue
   strip.show();
+  delay(200);
   colorWipe(strip.Color(255, 555, 255), 5); // White
   strip.show();
-  colorWipe(strip.Color(0, 0, 0), 0); // CLEAR
+  delay(200);
+  colorWipe(strip.Color(127, 127, 127), 127); // mid
   strip.show();
 }
 
