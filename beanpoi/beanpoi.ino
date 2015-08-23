@@ -1,13 +1,13 @@
 /* this is a self made poi using
 - light blue bean x2
-- sparkfun powercell (with a little solder touch to output 3.3V
+- sparkfun powercell (with a little solder touch to output 3.3V)
 - adafruit 8 pixelstick (because I couldn't find any proper led strip)
 
-- serial commands
 
-- color fx
-
+todo
+- start when shaken (also the main sync method)
 - detection of movement
+
 
 */
 
@@ -19,11 +19,11 @@
 Adafruit_NeoPixel strip = Adafruit_NeoPixel(8, PIN, NEO_GRB + NEO_KHZ800);
 Adafruit_NeoMatrix matrix = Adafruit_NeoMatrix(1, 8, PIN,  NEO_MATRIX_BOTTOM, NEO_GRB + NEO_KHZ400);
 
-// When acceleration is below this threshold, we consider it moving
-#define THRESHOLD 100
+// When acceleration is below this threshold, we consider shake happens
+#define THRESHOLD 700
 AccelerationReading previousAccel;
 
-#define MAX_STRING_LEN 27
+#define MAX_STRING_LEN 27 //??
 
 // this holds all serial input until a full command is in it
 String cmdBuffer;
@@ -32,19 +32,19 @@ String cmdBuffer;
 int j;
 
 // integer used to keep brightness
-int keepBrightness = 10;
+int keepBrightness = 0;
 
 // Define the number of samples to keep track of.  The higher the number,
 // the more the readings will be smoothed, but the slower the output will
-// respond to the input.  Using a constant rather than a normal variable lets
-// use this value to determine the size of the readings array.
-const int numReadings = 10;
+// respond to the input.  
+const int numReadings = 20;
 
 int readings[numReadings];      // the readings from the analog input
 int index = 0;                  // the index of the current reading
 int total = 0;                  // the running total
 int average = 0;                // the average
 
+int type = 0;                   // menu state
 
 
 void setup() {
@@ -55,10 +55,12 @@ void setup() {
   // on readBytes, return after 25ms or when the buffer is full
   Serial.setTimeout(25);
 
+  // begin strip
   strip.begin();
   strip.setBrightness(keepBrightness);
 
-  brutal();
+  //do startup check instead of brutal
+  brutal(); 
 
   // Initial reading
   previousAccel = Bean.getAcceleration();
@@ -104,6 +106,7 @@ void loop() {
       if ( !strncmp( buffer, "0" , 1) )
       {
         Serial.println ( String("< Brightness 0 >") );
+        
         keepBrightness = 0;
       }
       if ( !strncmp( buffer, "1" , 1) )
@@ -121,27 +124,27 @@ void loop() {
         Serial.println ( String("< Brightness 100 >") );
         keepBrightness = 100;
       }
-      else if ( !strncmp( buffer, "4" , 1) )
+      else if ( !strncmp( buffer, "debug" , 1) )
       {
-        Serial.println ( String("< not implemented >") );
+      Serial.println( String(" type ") + type);
+      Serial.println( String(" average ") + average);
 
       }
       else // everything else, just echo it
       {
         Serial.println( String("< ") + buffer + " >" );
+        
       }
     }
   }
   // buffer work done
-
-  // brigthness set to the value
-  strip.setBrightness(keepBrightness);
 
   // Get the current acceleration with a conversion of 3.91×10-3 g/unit.
   AccelerationReading currentAccel = Bean.getAcceleration();
 
   // Find the difference between the current acceleration and that of 20ms ago. ????????
   int accelDifference = getAccelDifference(previousAccel, currentAccel);
+  
   // Update previousAccel for the next loop.
   previousAccel = currentAccel;
 
@@ -159,21 +162,43 @@ void loop() {
     index = 0;
     // calculate the average:
     average = total / numReadings;
-    // send it to the computer as ASCII digits
-    Serial.println( String("< (1-3000) ") + average);
+    //every send it to the computer as ASCII digits
+   //Serial.println( String("< (1-3000) ") + average); after a while, it crashes the device. Maybe display some status once a minute?
   }
+  
+ // if still reset.
+ // if shaken moving through the menus else stop reset
+ if (average < 20) {
+   keepBrightness = 0;
+   type = 0;
+ } else if (average > THRESHOLD) {
+   type++;
+   if (type == 5) { type = 1; }
+   Serial.println( String(" type ") + type);
+ }
+ 
+ if (type == 1) { keepBrightness = 10; }
+ if (type == 2) { keepBrightness = 50; }
+ if (type == 3) { keepBrightness = 100; }
+ 
+// brigthness set to the value
+strip.setBrightness(keepBrightness);
 
-  // brightness based on acceleration, faster = brighter
-  int color = map(accelDifference, 1, 500, 1, 256);
-  int brightness = map(accelDifference, 1, 500, 1, 10);
+ strip.show();
+ 
+ if (type == 4)  {
+  // brightness based on acceleration, faster = brighter ?? this just makes it slightly brighter when in used, the intended purpose was to detect loops, not possible without gyroscope
+  // int color = map(accelDifference, 1, 500, 1, 256);
+  // int brightness = map(accelDifference, 1, 500, 1, 10);
+ // strip.setBrightness(keepBrightness + brightness);
 
-  strip.setBrightness(keepBrightness + brightness);
-
-  // cycle wait time, slow when slow fast when fast.
+  // cycle wait time, slow when slow fast when fast. ?? no same as before
   //int z = map(accelDifference, 1, 3000, 10, 1);
   //rainbowCycle(1); // zx8x256 = 2048ms?
   //need to color all leds based on R G B
 
+
+  // the lousy one pixel moves every 2 seconds while the rest loop rgb.
   if (j < 256) {
     for (int i = 0; i < strip.numPixels(); i++) {
       int pixel = map(j, 1 , 256, 1, 8);
@@ -188,11 +213,15 @@ void loop() {
     j = 0;
     strip.show();
   }
-
+ }
 
 
 
 }// end of main loop.
+
+
+
+
 
 // Fill the dots one after the other with a color
 void colorWipe(uint32_t c, uint8_t wait) {
