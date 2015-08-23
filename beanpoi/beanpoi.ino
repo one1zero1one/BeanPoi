@@ -3,11 +3,8 @@
 - sparkfun powercell (with a little solder touch to output 3.3V)
 - adafruit 8 pixelstick (because I couldn't find any proper led strip)
 
-
-todo
-- start when shaken (also the main sync method)
-- detection of movement
-
+v1 when shanken changes program
+- brigtness via serial
 
 */
 
@@ -215,24 +212,18 @@ void loop() {
     }
   }
 
-  if (type == 4) { // cosine with larger timespan and first killing lights on a sin
-
+  if (type == 4) { // cosine with larger timespan 
     strip.setBrightness(keepBrightness);
-
-    int value = 4 + 4 * cos(2 * PI / 10000 * time);
-    strip.setPixelColor(value, 0);
-    strip.show();
-
     for (int i = 0; i < strip.numPixels(); i++) { // each pixel
-      if (i != value) {
         int time = millis();
         int value = 128 + 127 * cos(2 * PI / 10000 * (255 * i - time)); // get a value between 0 to 255 according to cosinus, with a time displacement
         strip.setPixelColor(i, Wheel(value));
+
+        int value2 = 4 + 4 * cos(2 * PI / 5000 * (255 * i - time));
+        strip.setPixelColor(value2, 0);
         strip.show();
-      }
+
     }
-
-
   }
 
 
