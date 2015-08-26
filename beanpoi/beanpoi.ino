@@ -11,23 +11,23 @@ v1 when shanken changes program
 // where is the neopixel stick connected  (mirrored)
 #define PIN 1
 #include <Adafruit_GFX.h>
-#include <Adafruit_NeoMatrix.h>
-#include <Adafruit_NeoPixel.h>
+//#include <Adafruit_NeoMatrix.h> 
+#include <Adafruit_NeoPixel.h>4
 #include <elapsedMillis.h>
 
 Adafruit_NeoPixel strip = Adafruit_NeoPixel(8, PIN, NEO_GRB + NEO_KHZ800);
-Adafruit_NeoMatrix matrix = Adafruit_NeoMatrix(1, 8, PIN,  NEO_MATRIX_BOTTOM, NEO_GRB + NEO_KHZ400);
+//Adafruit_NeoMatrix matrix = Adafruit_NeoMatrix(1, 8, PIN,  NEO_MATRIX_BOTTOM, NEO_GRB + NEO_KHZ400);
 
 // When acceleration is below this threshold, we consider shake happens
 #define THRESHOLD 700
-AccelerationReading previousAccel;
+AccelerationReading previousAccel; 
 
-#define MAX_STRING_LEN 27 //??
+#define MAX_STRING_LEN 27 // for reciving commands over serial, no more than 27 bytes
 
 // this holds all serial input until a full command is in it
 String cmdBuffer;
 
-// integer used to count sequence in loop
+// integer used to count sequence in loop ??
 int j;
 
 // integer used to keep brightness
@@ -173,14 +173,14 @@ void loop() {
     //Serial.println( String("< (1-3000) ") + average); after a while, it crashes the device. Maybe display some status once a minute?
   }
 
-  // once a second logic to change the type
+  // once every 100ms check for action,
   if (timer0 > dynInterval) {
     timer0 -= dynInterval;
     dynInterval = 100;
     // if shaken moving through the menus else stop reset
     if (average > THRESHOLD) {
       type++;
-      dynInterval = 2000;
+      dynInterval = 2000; // if type changed, next check will be in 2 seconds, to avoid autoincrementing.
       if (type == 6) {
         type = 1;
       }
@@ -188,13 +188,17 @@ void loop() {
     }
   }
 
-  if (type == 1) { // blank
-    keepBrightness = 0; // shutup.
+  if (type == 1) { // each pixel one second
+    keepBrightness = 5; // shutup.
     strip.setBrightness(keepBrightness);
+    
+    //every 100 ms move a led.
+    
+    
     strip.show();
   }
   if (type == 2) { // all pixels are random
-    keepBrightness = 5;
+//    keepBrightness = 5; // eh
     strip.setBrightness(keepBrightness);
     for (int i = 0; i < strip.numPixels(); i++) {
       randNumber = random(0, 255);
