@@ -1,0 +1,7 @@
+<VisualMicro>
+  <Program Name="beanpoi" Ext=".ino" Location="C:\Users\Daniel\Documents\Arduino\BeanPoi\beanpoi">
+    <Platform Name="arduino16x" Package="bean" Platform="avr" Architecture="avr">
+    </Platform>
+    <Debug DebugEnabled="0" EnableBreak="1" />
+  </Program>
+</VisualMicro>

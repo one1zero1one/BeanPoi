@@ -4,129 +4,89 @@
 - adafruit 8 pixelstick (because I couldn't find any proper led strip)
 
 v1 when shanken changes program
-- brigtness via serial
+
 
 */
 
-// where is the neopixel stick connected  (mirrored)
-#define PIN 1
 #include <Adafruit_GFX.h>
-//#include <Adafruit_NeoMatrix.h> 
 #include <Adafruit_NeoPixel.h>4
 #include <elapsedMillis.h>
+//#include <Adafruit_NeoMatrix.h> 
 
+#define PIN 1 // where is neopixel strip connected (both strips are mirrored)
 Adafruit_NeoPixel strip = Adafruit_NeoPixel(8, PIN, NEO_GRB + NEO_KHZ800);
+int keepBrightness = 0;			// this holds brightness. according to adafruit this should not change ??notgoingblind??
 //Adafruit_NeoMatrix matrix = Adafruit_NeoMatrix(1, 8, PIN,  NEO_MATRIX_BOTTOM, NEO_GRB + NEO_KHZ400);
 
-// When acceleration is below this threshold, we consider shake happens
-#define THRESHOLD 700
-AccelerationReading previousAccel; 
+#define THRESHOLD 700			// treshold for shaking (acceleration
+AccelerationReading previousAccel;
 
-#define MAX_STRING_LEN 27 // for reciving commands over serial, no more than 27 bytes
+#define MAX_STRING_LEN 27		// for reciving commands over serial, no more than 27 bytes
+String cmdBuffer;				// hold the serial input
 
-// this holds all serial input until a full command is in it
-String cmdBuffer;
-
-// integer used to count sequence in loop ??
-int j;
-
-// integer used to keep brightness
-int keepBrightness = 0;
-
-// Define the number of samples to keep track of.  The higher the number,
-// the more the readings will be smoothed, but the slower the output will
-// respond to the input.
-const int numReadings = 10;
-
+const int numReadings = 10;		// Define the number of samples to keep track of.  The higher the number, the more the readings will be smoothed, but the slower the output will  respond to the input.
 int readings[numReadings];      // the readings from the analog input
 int index = 0;                  // the index of the current reading
 int total = 0;                  // the running total
 int average = 0;                // the average
-
 int type = 1;                   // menu state
 
 //timer0
 elapsedMillis timer0;
-#define interval 1000
-// the interval in mS
-
-int dynInterval = 1000;
+int dynInterval = 100;			// check acceleration default interval (it's increased after type change)
 
 long randNumber;
 long time = 0;
-
-int periode = 5000;
+int j;							// count sequence (for type 4) ??cleanthishit??
 
 void setup() {
-
-  // initialize serial communication at 57600 bits per second:
-  Serial.begin(57600);
-
-  // on readBytes, return after 25ms or when the buffer is full
-  Serial.setTimeout(25);
-
-  // begin strip
-  strip.begin();
+  Serial.begin(57600);			// initialize serial communication at 57600 bits per second:  
+  Serial.setTimeout(25);		// on readBytes, return after 25ms or when the buffer is full
+  
+  strip.begin();				// begin strip
   strip.setBrightness(keepBrightness);
 
-  //do startup check instead of brutal
-  brutal();
+  brutal();						//do startup check instead of brutal
 
-  // Initial reading
-  previousAccel = Bean.getAcceleration();
-
-  // initialize all the readings to 0:
+  previousAccel = Bean.getAcceleration();	// Initial reading
+  
   for (int thisReading = 0; thisReading < numReadings; thisReading++)
-    readings[thisReading] = 0;
+	  readings[thisReading] = 0;	// initialize all the readings to 0:
 
-  timer0 = 0; // clear the timer at the end of startup
-
-  randomSeed(analogRead(0));
+  timer0 = 0;					// clear the timer at the end of startup
+  randomSeed(analogRead(0));	// start random genertor
 
 }
 
 void loop() {
 
-  // this is the short-term buffer that gets added to the cmdBuffer
-  char buffer[64];
+  
+  char buffer[64];				// this is the short-term buffer that gets added to the cmdBuffer
   size_t length = 64;
-
-  // read as much as is available
-  length = Serial.readBytes( buffer, length - 1 );
-
-  // null-terminate the data so it acts like a string
-  buffer[length] = 0;
+  length = Serial.readBytes( buffer, length - 1 );	// read as much as is available
+  buffer[length] = 0;			// null-terminate the data so it acts like a string
 
   // if we have data, so do something with it
   if ( length > 0 )
-  {
-    // stick it to the end of the main buffer
-    cmdBuffer = buffer;
-
-    // find the end of the command input (a new line character)
-    size_t lineEnd = cmdBuffer.indexOf( "\n" );
-
-    // if there IS a new line character, then...
-    if ( lineEnd > 0 )
+  {    
+    cmdBuffer = buffer;			// stick it to the end of the main buffer
+    size_t lineEnd = cmdBuffer.indexOf( "\n" );  // find the end of the command input (a new line character)  
+    if ( lineEnd > 0 )			// if there IS a new line character, then...
     {
       // copy off the command, reusing our buffer variable
       cmdBuffer.substring( 0, lineEnd ).toCharArray( buffer, 64 );
-
-      // and remove it from the command buffer
+	  // and remove it from the command buffer
       cmdBuffer = cmdBuffer.substring( lineEnd + 1, cmdBuffer.length() + 1 );
 
-      // -------------------------------------------
       // now we can do something with the command...
-
       if ( !strncmp( buffer, "0" , 1) )
       {
-        Serial.println ( String("< Brightness 0 >") );
-
+        Serial.println ( String("< OFF >") );
         keepBrightness = 0;
       }
       if ( !strncmp( buffer, "1" , 1) )
       {
-        Serial.println ( String("< Brightness 5 >") );
+        Serial.println ( String("< ON >") );
         keepBrightness = 100;
       }
       else if ( !strncmp( buffer, "debug" , 1) )
@@ -142,35 +102,23 @@ void loop() {
 
       }
     }
-    dynInterval = 1000; //give it a second until type detection in the attempt to avoid type change on serial comm
+    dynInterval = 1000; //give it a second until type detection in the attempt to avoid type change on serial comm ?? not seem to be working
   }
   // buffer work done
 
-  // Get the current acceleration with a conversion of 3.91×10-3 g/unit.
-  AccelerationReading currentAccel = Bean.getAcceleration();
 
-  // Find the difference between the current acceleration and that of 20ms ago. ????????
-  int accelDifference = getAccelDifference(previousAccel, currentAccel);
-
-  // Update previousAccel for the next loop.
-  previousAccel = currentAccel;
-
-  // subtract the last reading:
-  total = total - readings[index];
-  // read from the sensor:
-  readings[index] = accelDifference;
-  // add the reading to the total:
-  total = total + readings[index];
-  // advance to the next position in the array:
-  index = index + 1;
-  // if we're at the end of the array...
-  if (index >= numReadings)   {
-    // ...wrap around to the beginning:
-    index = 0;
-    // calculate the average:
-    average = total / numReadings;
-    //every send it to the computer as ASCII digits
-    //Serial.println( String("< (1-3000) ") + average); after a while, it crashes the device. Maybe display some status once a minute?
+  // calculate average acceleration 
+  AccelerationReading currentAccel = Bean.getAcceleration();	// Get the current acceleration with a conversion of 3.91×10-3 g/unit.
+  int accelDifference = getAccelDifference(previousAccel, currentAccel);	// Find the difference between the current acceleration and that of 20ms ago. ????????
+  previousAccel = currentAccel;		// Update previousAccel for the next loop.
+  total = total - readings[index];	// subtract the last reading:
+  readings[index] = accelDifference;	// read from the sensor:
+  total = total + readings[index];		// add the reading to the total:
+  index = index + 1;				// advance to the next position in the array  
+  if (index >= numReadings)   {		// if we're at the end of the array...   
+    index = 0;						// ...wrap around to the beginning:			   
+    average = total / numReadings;	// calculate the average:
+    //Serial.println( String("< (1-3000) ") + average); after a while, it crashes the device. Maybe display some status once a minute??
   }
 
   // once every 100ms check for action,
@@ -184,7 +132,7 @@ void loop() {
       if (type == 6) {
         type = 1;
       }
-      Serial.println( String(" type changed to ") + type);
+      Serial.println( String("T: ") + type);
     }
   }
 
@@ -252,7 +200,14 @@ void loop() {
 }// end of main loop.
 
 
-
+ // This function calculates the difference between two acceleration readings
+int getAccelDifference(AccelerationReading readingOne, AccelerationReading readingTwo) {
+	int deltaX = abs(readingTwo.xAxis - readingOne.xAxis);
+	int deltaY = abs(readingTwo.yAxis - readingOne.yAxis);
+	int deltaZ = abs(readingTwo.zAxis - readingOne.zAxis);
+	// Return the magnitude
+	return deltaX + deltaY + deltaZ;
+}
 
 
 // Fill the dots one after the other with a color
@@ -263,16 +218,6 @@ void colorWipe(uint32_t c, uint8_t wait) {
     delay(wait);
   }
 }
-
-// This function calculates the difference between two acceleration readings
-int getAccelDifference(AccelerationReading readingOne, AccelerationReading readingTwo) {
-  int deltaX = abs(readingTwo.xAxis - readingOne.xAxis);
-  int deltaY = abs(readingTwo.yAxis - readingOne.yAxis);
-  int deltaZ = abs(readingTwo.zAxis - readingOne.zAxis);
-  // Return the magnitude
-  return deltaX + deltaY + deltaZ;
-}
-
 
 // COLOR FX
 // this brutally initiates the strips by flashing each strip with r, g, b.
@@ -293,80 +238,6 @@ void brutal() {
   strip.show();
 }
 
-// 256 x levels for each pixel to do RGB.
-void rainbow(uint8_t wait) {
-  uint16_t i, j;
-
-  for (j = 0; j < 256; j++) {
-    for (i = 0; i < strip.numPixels(); i++) {
-      strip.setPixelColor(i, Wheel((i + j) & 255));
-    }
-    strip.show();
-    delay(wait);
-  }
-  strip.setBrightness(10);
-}
-
-// Slightly different, this makes the rainbow equally distributed throughout
-void rainbowCycle(uint8_t wait) {
-  uint16_t i, j;
-
-  for (i = 0; i < strip.numPixels(); i++) {
-    strip.setPixelColor(i, Wheel(((i * 256 / strip.numPixels())) & 255));
-  }
-  strip.show();
-  delay(wait);
-}
-
-//// Slightly different, this makes the rainbow equally distributed throughout
-//void rainbowCycle(uint8_t wait) {
-//  uint16_t i, j;
-//
-//  for (j = 0; j < 256; j++) {
-//    for (i = 0; i < strip.numPixels(); i++) {
-//      strip.setPixelColor(i, Wheel(((i * 256 / strip.numPixels()) + j) & 255));
-//    }
-//    strip.show();
-//    delay(wait);
-//  }
-//}
-
-//Theatre-style crawling lights.
-void theaterChase(uint32_t c, uint8_t wait) {
-  for (int j = 0; j < 10; j++) { //do 10 cycles of chasing
-    for (int q = 0; q < 3; q++) {
-      for (int i = 0; i < strip.numPixels(); i = i + 3) {
-        strip.setPixelColor(i + q, c);  //turn every third pixel on
-      }
-      strip.show();
-
-      delay(wait);
-
-      for (int i = 0; i < strip.numPixels(); i = i + 3) {
-        strip.setPixelColor(i + q, 0);      //turn every third pixel off
-      }
-    }
-  }
-}
-
-//Theatre-style crawling lights with rainbow effect
-void theaterChaseRainbow(uint8_t wait) {
-  for (int j = 0; j < 256; j++) {   // cycle all 256 colors in the wheel
-    for (int q = 0; q < 3; q++) {
-      for (int i = 0; i < strip.numPixels(); i = i + 3) {
-        strip.setPixelColor(i + q, Wheel( (i + j) % 255)); //turn every third pixel on
-      }
-      strip.show();
-
-      delay(wait);
-
-      for (int i = 0; i < strip.numPixels(); i = i + 3) {
-        strip.setPixelColor(i + q, 0);      //turn every third pixel off
-      }
-    }
-  }
-}
-
 // Input a value 0 to 255 to get a color value.
 // The colours are a transition r - g - b - back to r.
 uint32_t Wheel(byte WheelPos) {
@@ -382,9 +253,7 @@ uint32_t Wheel(byte WheelPos) {
   return strip.Color(WheelPos * 3, 255 - WheelPos * 3, 0);
 }
 
-
 // some C magic
-
 char* subStr (char* input_string, char *separator, int segment_number) {
   char *act, *sub, *ptr;
   static char copy[MAX_STRING_LEN];
@@ -395,4 +264,68 @@ char* subStr (char* input_string, char *separator, int segment_number) {
     if (sub == NULL) break;
   }
   return sub;
+}
+
+
+// EXAMPLES/INSPIRATION ??? Remove from here eventually
+
+// 256 x levels for each pixel to do RGB.
+void rainbow(uint8_t wait) {
+	uint16_t i, j;
+
+	for (j = 0; j < 256; j++) {
+		for (i = 0; i < strip.numPixels(); i++) {
+			strip.setPixelColor(i, Wheel((i + j) & 255));
+		}
+		strip.show();
+		delay(wait);
+	}
+	strip.setBrightness(10);
+}
+
+// Slightly different, this makes the rainbow equally distributed throughout
+void rainbowCycle(uint8_t wait) {
+	uint16_t i, j;
+
+	for (i = 0; i < strip.numPixels(); i++) {
+		strip.setPixelColor(i, Wheel(((i * 256 / strip.numPixels())) & 255));
+	}
+	strip.show();
+	delay(wait);
+}
+
+//Theatre-style crawling lights.
+void theaterChase(uint32_t c, uint8_t wait) {
+	for (int j = 0; j < 10; j++) { //do 10 cycles of chasing
+		for (int q = 0; q < 3; q++) {
+			for (int i = 0; i < strip.numPixels(); i = i + 3) {
+				strip.setPixelColor(i + q, c);  //turn every third pixel on
+			}
+			strip.show();
+
+			delay(wait);
+
+			for (int i = 0; i < strip.numPixels(); i = i + 3) {
+				strip.setPixelColor(i + q, 0);      //turn every third pixel off
+			}
+		}
+	}
+}
+
+//Theatre-style crawling lights with rainbow effect
+void theaterChaseRainbow(uint8_t wait) {
+	for (int j = 0; j < 256; j++) {   // cycle all 256 colors in the wheel
+		for (int q = 0; q < 3; q++) {
+			for (int i = 0; i < strip.numPixels(); i = i + 3) {
+				strip.setPixelColor(i + q, Wheel((i + j) % 255)); //turn every third pixel on
+			}
+			strip.show();
+
+			delay(wait);
+
+			for (int i = 0; i < strip.numPixels(); i = i + 3) {
+				strip.setPixelColor(i + q, 0);      //turn every third pixel off
+			}
+		}
+	}
 }
