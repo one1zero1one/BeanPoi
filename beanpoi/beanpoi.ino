@@ -8,6 +8,8 @@ v1 when shanken changes program
 
 */
 
+#include "font8x8_basic.h" // * Fetched from: http://dimensionalrift.homelinux.net/combuster/mos3/?p=viewsource&file=/modules/gfx/font8_8.asm
+
 #include <Adafruit_GFX.h>
 #include <Adafruit_NeoPixel.h>4
 #include <elapsedMillis.h>
@@ -15,7 +17,7 @@ v1 when shanken changes program
 
 #define PIN 1 // where is neopixel strip connected (both strips are mirrored)
 Adafruit_NeoPixel strip = Adafruit_NeoPixel(8, PIN, NEO_GRB + NEO_KHZ800);
-int keepBrightness = 0;			// this holds brightness. according to adafruit this should not change ??notgoingblind??
+int keepBrightness = 5;			// this holds brightness. according to adafruit this should not change ??notgoingblind??
 //Adafruit_NeoMatrix matrix = Adafruit_NeoMatrix(1, 8, PIN,  NEO_MATRIX_BOTTOM, NEO_GRB + NEO_KHZ400);
 
 #define THRESHOLD 700			// treshold for shaking (acceleration
@@ -31,13 +33,22 @@ int total = 0;                  // the running total
 int average = 0;                // the average
 int type = 1;                   // menu state
 
-//timer0
+//timer0 - detection
 elapsedMillis timer0;
 int dynInterval = 100;			// check acceleration default interval (it's increased after type change)
+
+//timer1 - interaction
+elapsedMillis timer1;
+
+int freqTime = 250;				// display 10/second
+int delayTime = 2;				// keep the display for 2 ms
 
 long randNumber;
 long time = 0;
 int j;							// count sequence (for type 4) ??cleanthishit??
+int ord;						// char to display
+int r, g, b;
+String chopString1, chopString2, chopString3;
 
 void setup() {
   Serial.begin(57600);			// initialize serial communication at 57600 bits per second:  
@@ -54,16 +65,18 @@ void setup() {
 	  readings[thisReading] = 0;	// initialize all the readings to 0:
 
   timer0 = 0;					// clear the timer at the end of startup
+  timer1 = 0;					// clear the timer at the end of startup
   randomSeed(analogRead(0));	// start random genertor
+
+  ord = atoi("a");				// code
 
 }
 
 void loop() {
-
-  
+	 
   char buffer[64];				// this is the short-term buffer that gets added to the cmdBuffer
-  size_t length = 64;
-  length = Serial.readBytes( buffer, length - 1 );	// read as much as is available
+  size_t length = 64;							// read as much as is available
+  length = Serial.readBytes( buffer, length - 1 );
   buffer[length] = 0;			// null-terminate the data so it acts like a string
 
   // if we have data, so do something with it
@@ -79,26 +92,60 @@ void loop() {
       cmdBuffer = cmdBuffer.substring( lineEnd + 1, cmdBuffer.length() + 1 );
 
       // now we can do something with the command...
-      if ( !strncmp( buffer, "0" , 1) )
+      if ( !strncmp( buffer, "w" , 1) )
       {
         Serial.println ( String("< OFF >") );
         keepBrightness = 0;
-      }
-      if ( !strncmp( buffer, "1" , 1) )
+      } else if ( !strncmp( buffer, "s" , 1) )
       {
         Serial.println ( String("< ON >") );
         keepBrightness = 100;
-      }
-      else if ( !strncmp( buffer, "debug" , 1) )
+      } else if (!strncmp(buffer, "+", 1))
+	  {
+		  Serial.println(String("< + >"));
+		  freqTime = freqTime + 100;
+		  Serial.println(String(" freqTime ") + freqTime);
+	  } else if (!strncmp(buffer, "-", 1))
+	  {
+		  Serial.println(String("< - >"));
+		  freqTime = freqTime - 100;
+		  Serial.println(String(" freqTime ") + freqTime);
+	  } else  if (!strncmp(buffer, ">", 1))
+	  {
+		  Serial.println(String("< > >"));
+		  delayTime = delayTime + 1;
+		  Serial.println(String(" delayTime ") + delayTime);
+	  } else if (!strncmp(buffer, "<", 1))
+	  {
+		  Serial.println(String("< < >"));
+		  delayTime = delayTime - 1;
+		  Serial.println(String(" delayTime ") + delayTime);
+	  }
+      else if ( !strncmp( buffer, "d" , 1) )
       {
         Serial.println( String(" type ") + type);
         Serial.println( String(" average ") + average);
         Serial.println( String(" keepBrightness ") + keepBrightness);
         Serial.println( String(" dynInterval ") + dynInterval);
+		Serial.println( String(" buffer ") + buffer);
+		Serial.println( String(" cmdBuffer ") + cmdBuffer);
       }
-      else // everything else, just echo it
+      else // RED-GREEN-BLUE-
       {
-        Serial.println( String("< ") + buffer + " >" );
+        
+		chopString1 = getValue(cmdBuffer, '-', 0);
+		chopString2 = getValue(cmdBuffer, '-', 1);
+		chopString3 = getValue(cmdBuffer, '-', 2);
+				
+		chopString1 = chopString1.substring(0, chopString1.length() - 1);
+		chopString2 = chopString2.substring(0, chopString2.length() - 1);
+		chopString3 = chopString3.substring(0, chopString3.length() - 1);
+
+		Serial.println(String(" RGB ") + chopString1 + String(" ") + chopString2 + String(" ") + chopString3);
+
+		r = chopString1.toInt();
+		g = chopString2.toInt();
+		b = chopString3.toInt();		
 
       }
     }
@@ -108,12 +155,13 @@ void loop() {
 
 
   // calculate average acceleration 
-  AccelerationReading currentAccel = Bean.getAcceleration();	// Get the current acceleration with a conversion of 3.91×10-3 g/unit.
+								// Get the current acceleration with a conversion of 3.91×10-3 g/unit.
+  AccelerationReading currentAccel = Bean.getAcceleration();	
   int accelDifference = getAccelDifference(previousAccel, currentAccel);	// Find the difference between the current acceleration and that of 20ms ago. ????????
   previousAccel = currentAccel;		// Update previousAccel for the next loop.
   total = total - readings[index];	// subtract the last reading:
-  readings[index] = accelDifference;	// read from the sensor:
-  total = total + readings[index];		// add the reading to the total:
+  readings[index] = accelDifference;// read from the sensor:
+  total = total + readings[index];	// add the reading to the total:
   index = index + 1;				// advance to the next position in the array  
   if (index >= numReadings)   {		// if we're at the end of the array...   
     index = 0;						// ...wrap around to the beginning:			   
@@ -125,10 +173,9 @@ void loop() {
   if (timer0 > dynInterval) {
     timer0 -= dynInterval;
     dynInterval = 100;
-    // if shaken moving through the menus else stop reset
-    if (average > THRESHOLD) {
+    if (average > THRESHOLD) {		// if shaken moving through the menus else stop reset
       type++;
-      dynInterval = 2000; // if type changed, next check will be in 2 seconds, to avoid autoincrementing.
+      dynInterval = 2000;			// if type changed, next check will be in 2 seconds, to avoid autoincrementing.
       if (type == 6) {
         type = 1;
       }
@@ -136,16 +183,19 @@ void loop() {
     }
   }
 
-  if (type == 1) { // each pixel one second
-    keepBrightness = 5; // shutup.
-    strip.setBrightness(keepBrightness);
-    
-    //every 100 ms move a led.
-    
-    
-    strip.show();
+  if (type == 1) { // turn them on twice / second for 10ms
+    strip.setBrightness(keepBrightness);  
+	for (int i = 0; i < strip.numPixels(); i++) strip.setPixelColor(i, strip.Color(233, 116, 81));
+	strip.show();
   }
-  if (type == 2) { // all pixels are random
+
+  if (type == 2) { // write a char
+	  strip.setBrightness(keepBrightness);
+	  for (int i = 0; i < strip.numPixels(); i++) strip.setPixelColor(i, strip.Color(r, g, b));
+	  strip.show();
+  }
+
+  if (type == 3) { // all pixels are random
 //    keepBrightness = 5; // eh
     strip.setBrightness(keepBrightness);
     for (int i = 0; i < strip.numPixels(); i++) {
@@ -154,7 +204,50 @@ void loop() {
       strip.show();
     }
   }
-  if (type == 3) { // all pixels are cosine with time displacement
+
+  // this works, need to experiment with a camera
+  //if (type == 1) { // turn them on twice / second for 10ms
+	 // strip.setBrightness(keepBrightness);
+
+	 // if (timer1 > freqTime) {
+		//  timer1 = 0;
+		//  for (int i = 0; i < strip.numPixels(); i++) {
+		//	  strip.setPixelColor(i, strip.Color(255, 555, 255));
+		//  }
+		//  delay(delayTime);
+	 // }
+	 // else {
+		//  for (int i = 0; i < strip.numPixels(); i++) {
+		//	  strip.setPixelColor(i, strip.Color(0, 0, 0));
+		//  }
+	 // }
+	 // strip.show();
+  //}
+  //if (type == 2) { // write a char
+	 // strip.setBrightness(keepBrightness);
+
+	 // randNumber = random(1, 127);
+	 // char *bitmap = font8x8_basic[randNumber]; //todo ord
+
+	 // int x, y;
+	 // for (x = 0; x < 8; x++) {  // 8 columsn 
+		//  for (y = 0; y < 8; y++) { // 8 lines				   
+		//	  if (bitmap[x] & 1 << y) {
+		//		  strip.setPixelColor(y, strip.Color(255, 555, 255));
+		//	  }
+		//	  else {
+		//		  strip.setPixelColor(y, strip.Color(0, 0, 0));
+		//	  }
+		//  }
+		//  strip.show(); // show a line
+		//  delay(delayTime);
+
+	 // }
+  //}
+
+  
+
+  if (type == 4) { // all pixels are cosine with time displacement
     strip.setBrightness(keepBrightness);
     for (int i = 0; i < strip.numPixels(); i++) { // each pixel
       int time = millis();
@@ -164,7 +257,7 @@ void loop() {
     }
   }
 
-  if (type == 4) { // cosine with larger timespan 
+  if (type == 5) { // cosine with larger timespan 
     strip.setBrightness(keepBrightness);
     for (int i = 0; i < strip.numPixels(); i++) { // each pixel
         int time = millis();
@@ -178,24 +271,23 @@ void loop() {
     }
   }
 
-
-  if (type == 5)  {
-    // the lousy one pixel moves every 2 seconds while the rest loop rgb.
-    if (j < 256) {
-      for (int i = 0; i < strip.numPixels(); i++) {
-        int pixel = map(j, 1 , 256, 1, 8);
-        //   strip.setPixelColor(i, Wheel(((i * 256 / strip.numPixels()) + j) & 255));
-        strip.setPixelColor(i, Wheel(j));
-        strip.setPixelColor(pixel, Wheel(256 - j) );
-      }
-      j++;
-      strip.show();
-    }
-    else {
-      j = 0;
-      strip.show();
-    }
-  }
+  //if (type == 5)  {
+  //  // the lousy one pixel moves every 2 seconds while the rest loop rgb.
+  //  if (j < 256) {
+  //    for (int i = 0; i < strip.numPixels(); i++) {
+  //      int pixel = map(j, 1 , 256, 1, 8);
+  //      //   strip.setPixelColor(i, Wheel(((i * 256 / strip.numPixels()) + j) & 255));
+  //      strip.setPixelColor(i, Wheel(j));
+  //      strip.setPixelColor(pixel, Wheel(256 - j) );
+  //    }
+  //    j++;
+  //    strip.show();
+  //  }
+  //  else {
+  //    j = 0;
+  //    strip.show();
+  //  }
+  //}
 
 }// end of main loop.
 
@@ -239,7 +331,7 @@ void brutal() {
 }
 
 // Input a value 0 to 255 to get a color value.
-// The colours are a transition r - g - b - back to r.
+// The colours are a transition r - g - b
 uint32_t Wheel(byte WheelPos) {
   WheelPos = 255 - WheelPos;
   if (WheelPos < 85) {
@@ -326,6 +418,33 @@ void theaterChaseRainbow(uint8_t wait) {
 			for (int i = 0; i < strip.numPixels(); i = i + 3) {
 				strip.setPixelColor(i + q, 0);      //turn every third pixel off
 			}
+		}
+	}
+}
+
+
+String getValue(String data, char separator, int index)
+{
+
+	int maxIndex = data.length() - 1;
+	int j = 0;
+	String chunkVal = "";
+
+	for (int i = 0; i <= maxIndex && j <= index; i++)
+	{
+		chunkVal.concat(data[i]);
+
+		if (data[i] == separator)
+		{
+			j++;
+
+			if (j>index)
+			{
+				chunkVal.trim();
+				return chunkVal;
+			}
+
+			chunkVal = "";
 		}
 	}
 }
