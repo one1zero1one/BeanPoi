@@ -127,8 +127,10 @@ void loop() {
         Serial.println( String(" average ") + average);
         Serial.println( String(" keepBrightness ") + keepBrightness);
         Serial.println( String(" dynInterval ") + dynInterval);
-		Serial.println( String(" buffer ") + buffer);
-		Serial.println( String(" cmdBuffer ") + cmdBuffer);
+	Serial.println( String(" buffer ") + buffer);
+	Serial.println( String(" cmdBuffer ") + cmdBuffer);
+        Serial.println(String(" delayTime ") + delayTime);
+        Serial.println(String(" freqTime ") + freqTime);
       }
       else // RED-GREEN-BLUE-
       {
@@ -176,27 +178,62 @@ void loop() {
     if (average > THRESHOLD) {		// if shaken moving through the menus else stop reset
       type++;
       dynInterval = 2000;			// if type changed, next check will be in 2 seconds, to avoid autoincrementing.
-      if (type == 6) {
+      if (type == 7) {
         type = 1;
       }
       Serial.println( String("T: ") + type);
     }
   }
 
-  if (type == 1) { // turn them on twice / second for 10ms
+  if (type == 1) { // set a custom color.
     strip.setBrightness(keepBrightness);  
-	for (int i = 0; i < strip.numPixels(); i++) strip.setPixelColor(i, strip.Color(233, 116, 81));
+	
+        for (int i = 0; i < strip.numPixels(); i++) strip.setPixelColor(i, strip.Color(126,0,0)); //0  RED
 	strip.show();
+        
+	for (int i = 0; i < strip.numPixels(); i++) strip.setPixelColor(i, strip.Color(126,126,0)); //1  ORANGE
+	strip.show();
+     
+	for (int i = 0; i < strip.numPixels(); i++) strip.setPixelColor(i, strip.Color(0,126,126));  //2  YELLOW
+	strip.show();
+
+	for (int i = 0; i < strip.numPixels(); i++) strip.setPixelColor(i, strip.Color(63,90,0)); //3  CHARTREUSE GREEN
+	strip.show();
+           
+        for (int i = 0; i < strip.numPixels(); i++) strip.setPixelColor(i, strip.Color(0,126,126)); //5  SPRING GREEN
+	strip.show();
+       
+        for (int i = 0; i < strip.numPixels(); i++) strip.setPixelColor(i, strip.Color(0,126,0)); //6  CYAN
+	strip.show();
+           
+        for (int i = 0; i < strip.numPixels(); i++) strip.setPixelColor(i, strip.Color(0,63,126)); //7  AZURE
+	strip.show();
+      
+        for (int i = 0; i < strip.numPixels(); i++) strip.setPixelColor(i, strip.Color(0,0,126)); //8  BLUE
+	strip.show();
+               
+        for (int i = 0; i < strip.numPixels(); i++) strip.setPixelColor(i, strip.Color(63,0,126)); //9  VIOLET
+	strip.show();
+        
+        for (int i = 0; i < strip.numPixels(); i++) strip.setPixelColor(i, strip.Color(126,0,126)); //10 MAGENTA
+	strip.show();
+
+        
+        for (int i = 0; i < strip.numPixels(); i++) strip.setPixelColor(i, strip.Color(0,126,0)); //11 ROSE
+	strip.show();
+        
+        for (int i = 0; i < strip.numPixels(); i++) strip.setPixelColor(i, strip.Color(126,126,126)); //12 WHITE
+	strip.show();
+   
   }
 
-  if (type == 2) { // write a char
+  if (type == 2) { // set a color specified by serial ( like "-r-g-b"
 	  strip.setBrightness(keepBrightness);
 	  for (int i = 0; i < strip.numPixels(); i++) strip.setPixelColor(i, strip.Color(r, g, b));
 	  strip.show();
   }
 
   if (type == 3) { // all pixels are random
-//    keepBrightness = 5; // eh
     strip.setBrightness(keepBrightness);
     for (int i = 0; i < strip.numPixels(); i++) {
       randNumber = random(0, 255);
@@ -204,48 +241,6 @@ void loop() {
       strip.show();
     }
   }
-
-  // this works, need to experiment with a camera
-  //if (type == 1) { // turn them on twice / second for 10ms
-	 // strip.setBrightness(keepBrightness);
-
-	 // if (timer1 > freqTime) {
-		//  timer1 = 0;
-		//  for (int i = 0; i < strip.numPixels(); i++) {
-		//	  strip.setPixelColor(i, strip.Color(255, 555, 255));
-		//  }
-		//  delay(delayTime);
-	 // }
-	 // else {
-		//  for (int i = 0; i < strip.numPixels(); i++) {
-		//	  strip.setPixelColor(i, strip.Color(0, 0, 0));
-		//  }
-	 // }
-	 // strip.show();
-  //}
-  //if (type == 2) { // write a char
-	 // strip.setBrightness(keepBrightness);
-
-	 // randNumber = random(1, 127);
-	 // char *bitmap = font8x8_basic[randNumber]; //todo ord
-
-	 // int x, y;
-	 // for (x = 0; x < 8; x++) {  // 8 columsn 
-		//  for (y = 0; y < 8; y++) { // 8 lines				   
-		//	  if (bitmap[x] & 1 << y) {
-		//		  strip.setPixelColor(y, strip.Color(255, 555, 255));
-		//	  }
-		//	  else {
-		//		  strip.setPixelColor(y, strip.Color(0, 0, 0));
-		//	  }
-		//  }
-		//  strip.show(); // show a line
-		//  delay(delayTime);
-
-	 // }
-  //}
-
-  
 
   if (type == 4) { // all pixels are cosine with time displacement
     strip.setBrightness(keepBrightness);
@@ -257,38 +252,41 @@ void loop() {
     }
   }
 
-  if (type == 5) { // cosine with larger timespan 
+  if (type == 5) { // cosine with larger timespan + turning off pixels on a fast cosin 
     strip.setBrightness(keepBrightness);
     for (int i = 0; i < strip.numPixels(); i++) { // each pixel
         int time = millis();
         int value = 128 + 127 * cos(2 * PI / 10000 * (255 * i - time)); // get a value between 0 to 255 according to cosinus, with a time displacement
         strip.setPixelColor(i, Wheel(value));
 
-        int value2 = 4 + 4 * cos(2 * PI / 5000 * (255 * i - time));
+        int value2 = 4 + 4 * cos(2 * PI / 1000 * (255 * i - time));
         strip.setPixelColor(value2, 0);
         strip.show();
 
     }
   }
 
-  //if (type == 5)  {
-  //  // the lousy one pixel moves every 2 seconds while the rest loop rgb.
-  //  if (j < 256) {
-  //    for (int i = 0; i < strip.numPixels(); i++) {
-  //      int pixel = map(j, 1 , 256, 1, 8);
-  //      //   strip.setPixelColor(i, Wheel(((i * 256 / strip.numPixels()) + j) & 255));
-  //      strip.setPixelColor(i, Wheel(j));
-  //      strip.setPixelColor(pixel, Wheel(256 - j) );
-  //    }
-  //    j++;
-  //    strip.show();
-  //  }
-  //  else {
-  //    j = 0;
-  //    strip.show();
-  //  }
-  //}
+if (type == 6) { // write a char
+	  strip.setBrightness(keepBrightness);
 
+	  randNumber = random(1, 127);
+	  char *bitmap = font8x8_basic[randNumber]; //todo ord
+
+	  int x, y;
+	  for (x = 0; x < 8; x++) {  // 8 columsn 
+		  for (y = 0; y < 8; y++) { // 8 lines				   
+			  if (bitmap[x] & 1 << y) {
+				  strip.setPixelColor(y, strip.Color(255, 555, 255));
+			  }
+			  else {
+				  strip.setPixelColor(y, strip.Color(0, 0, 0));
+			  }
+		  }
+		  strip.show(); // show a line
+		  delay(delayTime);
+
+	  }
+  }
 }// end of main loop.
 
 
